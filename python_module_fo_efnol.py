@@ -6,12 +6,16 @@ import argparse
 import json
 import requests
 import time
+import math
 
+r= (255,0,0)
+w = (255,255,255)
 AllowedActions = ['both', 'publish', 'subscribe']
 geo_data = None
 cpuserial = "0000000000000000"
 sense_data = []
-#sense = SenseHat()
+sense = SenseHat()
+sense.show_message("Started")
 acc_flag=[0,False]
 
 #get lattitude and logitude 
@@ -42,26 +46,27 @@ def customCallback(client, userdata, message):
     print("from topic: ")
     print(message.topic)
     print("--------------\n\n")
-#function to get sensehat data 	
+#function to get sensehat data  
 def getsensordata():
-	ordata =sense.get_orientation()
-	acc=sense.get_accelerometer_raw()
-	if ((ordata["roll"] > 90 and ordata["roll"] < 359) and (ordata["pitch"] > 90 and ordata["pitch"] < 359 )):
-	  acc_flag[0]=(acc["x"])
-	  acc_flag[1]=True
-	  return  acc_flag  
-	
+    ordata =sense.get_orientation_radians()
+    roll_in_degree=math.degrees(ordata["roll"])
+    acc=sense.get_accelerometer_raw()
+    if (roll_in_degree > 90 or roll_in_degree < -90):
+        #or (ordata["pitch"] > 90 or ordata["pitch"] < 270 )):
+      acc_flag[0]=(acc["z"])
+      acc_flag[1]=True
+      return  acc_flag  
+    
 
-	
+    
 # Read in command-line parameters
 parser = argparse.ArgumentParser()
 parser.add_argument("-e", "--endpoint", action="store", required=True, dest="host", help="Your AWS IoT custom endpoint")
 parser.add_argument("-r", "--rootCA", action="store", required=True, dest="rootCAPath", help="Root CA file path")
 parser.add_argument("-c", "--cert", action="store", dest="certificatePath", help="Certificate file path")
 parser.add_argument("-k", "--key", action="store", dest="privateKeyPath", help="Private key file path")
-parser.add_argument("-p", "--port", action="store", dest="port", type=int, help="Port number override")
-parser.add_argument("-w", "--websocket", action="store_true", dest="useWebsocket", default=False,
-                    help="Use MQTT over WebSocket")
+#parser.add_argument("-p", "--port", action="store", dest="port", type=int, help="Port number override")
+#parser.add_argument("-w", "--websocket", action="store_true", dest="useWebsocket", default=False,help="Use MQTT over WebSocket")
 parser.add_argument("-id", "--clientId", action="store", dest="clientId", default="basicPubSub",
                     help="Targeted client id")
 parser.add_argument("-t", "--topic", action="store", dest="topic", default="sdk/test/Python", help="Targeted topic")
@@ -75,8 +80,8 @@ host = args.host
 rootCAPath = args.rootCAPath
 certificatePath = args.certificatePath
 privateKeyPath = args.privateKeyPath
-port = args.port
-useWebsocket = args.useWebsocket
+port = 8883
+#useWebsocket = args.useWebsocket
 clientId = args.clientId
 topic = args.topic
 
@@ -84,7 +89,7 @@ if args.mode not in AllowedActions:
     parser.error("Unknown --mode option %s. Must be one of %s" % (args.mode, str(AllowedActions)))
     exit(2)
 
-if args.useWebsocket and args.certificatePath and args.privateKeyPath:
+"""if args.useWebsocket and args.certificatePath and args.privateKeyPath:
     parser.error("X.509 cert authentication and WebSocket are mutual exclusive. Please pick one.")
     exit(2)
 
@@ -96,7 +101,7 @@ if not args.useWebsocket and (not args.certificatePath or not args.privateKeyPat
 if args.useWebsocket and not args.port:  # When no port override for WebSocket, default to 443
     port = 443
 if not args.useWebsocket and not args.port:  # When no port override for non-WebSocket, default to 8883
-    port = 8883
+    port = 8883"""
 
 # Configure logging
 logger = logging.getLogger("AWSIoTPythonSDK.core")
@@ -108,14 +113,18 @@ logger.addHandler(streamHandler)
 
 # Init AWSIoTMQTTClient
 myAWSIoTMQTTClient = None
-if useWebsocket:
+"""if useWebsocket:
     myAWSIoTMQTTClient = AWSIoTMQTTClient(clientId, useWebsocket=True)
     myAWSIoTMQTTClient.configureEndpoint(host, port)
     myAWSIoTMQTTClient.configureCredentials(rootCAPath)
 else:
     myAWSIoTMQTTClient = AWSIoTMQTTClient(clientId)
     myAWSIoTMQTTClient.configureEndpoint(host, port)
-    myAWSIoTMQTTClient.configureCredentials(rootCAPath, privateKeyPath, certificatePath)
+    myAWSIoTMQTTClient.configureCredentials(rootCAPath, privateKeyPath, certificatePath)"""
+
+myAWSIoTMQTTClient = AWSIoTMQTTClient(clientId)
+myAWSIoTMQTTClient.configureEndpoint(host, port)
+myAWSIoTMQTTClient.configureCredentials(rootCAPath, privateKeyPath, certificatePath)
 
 # AWSIoTMQTTClient connection configuration
 myAWSIoTMQTTClient.configureAutoReconnectBackoffTime(1, 32, 20)
@@ -132,32 +141,33 @@ time.sleep(2)
 
 # Publish to the same topic in a loop forever
 if args.mode == 'both' or args.mode == 'publish' :
-	display_ip()
-	getserial()
-	message = {}
-	message['deviceId'] = getserial.cpuserial
-	message['latitude'] = display_ip.geo_data['latitude']
-	message['longitude'] = display_ip.geo_data['longitude']
-	message['country'] = display_ip.geo_data['country']
-	
-	while True:  
-		#uncomment the getsensordata when sensehat module is functioning 
-		#getsensordata()
-		#comment the following 2 lines when sensehat module is functioning 
-		acc_flag[1] = True
-		acc_flag[0] = 16
-		if acc_flag[1]:
-			print("accident happened", abs(acc_flag[0]))
-			if abs(acc_flag[0])*100 > 150:
-				speed = abs(acc_flag[0]*10)
-			else :
-				speed = abs(acc_flag[0]*100)
-			message['speed'] = speed
-			messageJson = json.dumps(message,sort_keys=True)
-			myAWSIoTMQTTClient.publish(topic, messageJson, 1)
-			break
-		
-	if args.mode == 'publish':
-		print('Published topic %s: %s\n' % (topic, messageJson))
+    display_ip()
+    getserial()
+    message = {}
+    message['deviceId'] = getserial.cpuserial
+    message['latitude'] = display_ip.geo_data['latitude']
+    message['longitude'] = display_ip.geo_data['longitude']
+    message['country'] = display_ip.geo_data['country']
+    
+    while True:  
+        #uncomment the getsensordata when sensehat module is functioning 
+        getsensordata()
+        #comment the following 2 lines when sensehat module is functioning 
+        #acc_flag[1] = True
+        #acc_flag[0] = 16
+        if acc_flag[1]:
+            print("accident happened", abs(acc_flag[0]))
+            if abs(acc_flag[0])*100 > 150:
+                speed = abs(acc_flag[0]*10)
+            else :
+                speed = abs(acc_flag[0]*100)
+            message['speed'] = speed
+            messageJson = json.dumps(message,sort_keys=True)
+            myAWSIoTMQTTClient.publish(topic, messageJson, 0)
+            sense.show_message("Accident", text_colour=w, back_colour=r)
+            break
+        
+    if args.mode == 'publish':
+        print('Published topic %s: %s\n' % (topic, messageJson))
 while 1:
     time.sleep(10)
