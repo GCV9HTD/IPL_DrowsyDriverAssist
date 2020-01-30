@@ -112,7 +112,7 @@ def getsensordata():
 def wait_for_internet_connection():
     while True:
         try:
-            response = urllib2.urlopen('http://74.125.113.99',timeout=1)
+            response = urllib2.urlopen('http://google.com',timeout=1)
             return
         except urllib2.URLError:
             pass
