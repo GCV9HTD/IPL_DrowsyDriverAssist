@@ -1,5 +1,6 @@
 from sense_hat import SenseHat
 from AWSIoTPythonSDK.MQTTLib import AWSIoTMQTTClient
+from datetime import datetime
 import logging
 import time
 import argparse
@@ -7,6 +8,7 @@ import json
 import requests
 import time
 import math
+import urllib2
 
 r= (255,0,0)
 w = (255,255,255)
@@ -46,6 +48,7 @@ def customCallback(client, userdata, message):
     print("from topic: ")
     print(message.topic)
     print("--------------\n\n")
+    
 #function to get sensehat data  
 def getsensordata():
     ordata =sense.get_orientation_radians()
@@ -56,7 +59,14 @@ def getsensordata():
       acc_flag[0]=(acc["z"])
       acc_flag[1]=True
       return  acc_flag  
-    
+
+def wait_for_internet_connection():
+    while True:
+        try:
+            response = urllib2.urlopen('http://74.125.113.99',timeout=1)
+            return
+        except urllib2.URLError:
+            pass
 
     
 # Read in command-line parameters
@@ -103,6 +113,8 @@ if args.useWebsocket and not args.port:  # When no port override for WebSocket, 
 if not args.useWebsocket and not args.port:  # When no port override for non-WebSocket, default to 8883
     port = 8883"""
 
+# wait for internet
+wait_for_internet_connection()
 # Configure logging
 logger = logging.getLogger("AWSIoTPythonSDK.core")
 logger.setLevel(logging.DEBUG)
@@ -157,11 +169,14 @@ if args.mode == 'both' or args.mode == 'publish' :
         #acc_flag[0] = 16
         if acc_flag[1]:
             print("accident happened", abs(acc_flag[0]))
+            now = datetime.now()
+            current_time = now.strftime("%H:%M:%S")
             if abs(acc_flag[0])*100 > 150:
                 speed = abs(acc_flag[0]*10)
             else :
                 speed = abs(acc_flag[0]*100)
             message['speed'] = speed
+            message['timestamp'] =current_time
             messageJson = json.dumps(message,sort_keys=True)
             myAWSIoTMQTTClient.publish(topic, messageJson, 0)
             sense.show_message("Accident", text_colour=w, back_colour=r)
