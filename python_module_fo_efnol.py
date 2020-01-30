@@ -221,7 +221,7 @@ if args.mode == 'both' or args.mode == 'publish' :
         if acc_flag[1]:
             print("accident happened", abs(acc_flag[0]))
             now = datetime.now()
-            current_time = now.strftime("%H:%M:%S")
+            current_time = now.strftime("%d/%m/%Y %H:%M:%S")
             if abs(acc_flag[0])*100 > 150:
                 speed = abs(acc_flag[0]*10)
             else :
@@ -230,7 +230,7 @@ if args.mode == 'both' or args.mode == 'publish' :
             message['timestamp'] =current_time
             messageJson = json.dumps(message,sort_keys=True)
             myAWSIoTMQTTClient.publish(topic, messageJson, 0)
-            s.set_pixels(stop())
+            sense.set_pixels(stop())
             break
         
     if args.mode == 'publish':
