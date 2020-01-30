@@ -10,15 +10,64 @@ import time
 import math
 import urllib2
 
-r= (255,0,0)
-w = (255,255,255)
+red = (255, 0, 0)
+green = (0, 255, 0)
+blue = (0, 0, 255)
+white = (255,255,255)
+nothing = (0,0,0)
+
 AllowedActions = ['both', 'publish', 'subscribe']
 geo_data = None
 cpuserial = "0000000000000000"
 sense_data = []
 sense = SenseHat()
-sense.show_message("Started")
+sense.low_light = True
 acc_flag=[0,False]
+
+def start():
+    W = white
+    G = green
+    logo = [
+    W, W, W, W, W, W, W, W,
+    W, W, W, W, W, W, W, W,
+    W, W, W, W, W, W, G, W,
+    W, G, W, W, W, G, G, W,
+    W, G, G, W, G, G, W, W,
+    W, W, G, G, G, W, W, W,
+    W, W, W, G, W, W, W, W,
+    W, W, W, W, W, W, W, W,
+    ]
+    return logo
+
+def stop():
+    R = red
+    Y = yellow
+    logo = [
+    R, R, R, R, R, R, R, R,
+    R, Y, Y, R, R, Y, Y, R,
+    R, Y, Y, Y, Y, Y, Y, R,
+    R, R, Y, Y, Y, Y, R, R,
+    R, R, Y, Y, Y, Y, R, R,
+    R, Y, Y, Y, Y, Y, Y, R,
+    R, Y, Y, R, R, Y, Y, R,
+    R, R, R, R, R, R, R, R,
+    ]
+    return logo
+
+def internet():
+    N = nothing
+    B = blue
+    logo = [
+    N, N, N, N, N, N, N, N,
+    N, N, N, N, N, N, N, N,
+    N, B, B, B, B, B, B, N,
+    N, N, N, N, N, N, N, N,
+    N, N, B, B, B, B, N, N,
+    N, N, N, N, N, N, N, N,
+    N, N, N, B, B, N, N, N,
+    N, N, N, N, N, N, N, N,
+    ]
+    return logo
 
 #get lattitude and logitude 
 def display_ip():
@@ -113,8 +162,10 @@ if args.useWebsocket and not args.port:  # When no port override for WebSocket, 
 if not args.useWebsocket and not args.port:  # When no port override for non-WebSocket, default to 8883
     port = 8883"""
 
+sense.set_pixels(internet())
 # wait for internet
 wait_for_internet_connection()
+sense.set_pixels(start())
 # Configure logging
 logger = logging.getLogger("AWSIoTPythonSDK.core")
 logger.setLevel(logging.DEBUG)
@@ -179,7 +230,7 @@ if args.mode == 'both' or args.mode == 'publish' :
             message['timestamp'] =current_time
             messageJson = json.dumps(message,sort_keys=True)
             myAWSIoTMQTTClient.publish(topic, messageJson, 0)
-            sense.show_message("Accident", text_colour=w, back_colour=r)
+            s.set_pixels(stop())
             break
         
     if args.mode == 'publish':
