@@ -223,12 +223,14 @@ if args.mode == 'both' or args.mode == 'publish' :
             print("accident happened", abs(acc_flag[0]))
             now = datetime.now()
             current_time = now.strftime("%d/%m/%Y %H:%M:%S")
+            incidentNo = "INC"+getserial.cpuserial+now.strftime("%d%m%Y%H%M%S")
             if abs(acc_flag[0])*100 > 150:
                 speed = abs(acc_flag[0]*10)
             else :
                 speed = abs(acc_flag[0]*100)
             message['speed'] = speed
             message['timestamp'] =current_time
+            message['incidentId'] = incidentNo
             messageJson = json.dumps(message,sort_keys=True)
             myAWSIoTMQTTClient.publish(topic, messageJson, 0)
             sense.set_pixels(stop())
